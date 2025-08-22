@@ -1,0 +1,546 @@
+openapi: 3.0.0
+info:
+  title: "Spy Cat Agency API"
+  description: "API for managing spy cats, their missions, and targets."
+  version: "1.0.0"
+servers:
+  - url: "/api/v1"
+    description: "API Version 1"
+
+paths:
+  /cats:
+    get:
+      tags:
+        - Cats
+      summary: "List all spy cats"
+      description: "Retrieves a list of all spy cats in the system."
+      operationId: "listCats"
+      responses:
+        '200':
+          description: "A successful response with a list of cats."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cat'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Cats
+      summary: "Create a new spy cat"
+      description: "Adds a new spy cat to the agency. The breed is validated against TheCatAPI."
+      operationId: "createCat"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCat'
+      responses:
+        '201':
+          description: "Cat created successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /cats/{catId}:
+    get:
+      tags:
+        - Cats
+      summary: "Get a single spy cat"
+      description: "Retrieves detailed information about a specific spy cat by its ID."
+      operationId: "getCatById"
+      parameters:
+        - name: "catId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        '200':
+          description: "Successful retrieval of cat data."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Cats
+      summary: "Update a cat's salary"
+      description: "Updates the salary of an existing spy cat."
+      operationId: "updateCatSalary"
+      parameters:
+        - name: "catId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCatSalary'
+      responses:
+        '200':
+          description: "Cat salary updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  new_salary:
+                    type: number
+                    format: float
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Cats
+      summary: "Remove a spy cat"
+      description: "Deletes a spy cat from the system. Fails if the cat is on an active mission."
+      operationId: "deleteCat"
+      parameters:
+        - name: "catId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        '204':
+          description: "Cat deleted successfully."
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /missions:
+    get:
+      tags:
+        - Missions
+      summary: "List all missions"
+      description: "Retrieves a summary list of all missions."
+      operationId: "listMissions"
+      responses:
+        '200':
+          description: "A list of missions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MissionSummary'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Missions
+      summary: "Create a new mission"
+      description: "Creates a new mission with 1 to 3 initial targets."
+      operationId: "createMission"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMission'
+      responses:
+        '201':
+          description: "Mission created successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /missions/{missionId}:
+    get:
+      tags:
+        - Missions
+      summary: "Get a single mission"
+      description: "Retrieves detailed information about a mission, including its targets."
+      operationId: "getMissionById"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        '200':
+          description: "Successful retrieval of mission data."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Missions
+      summary: "Update a mission"
+      description: "Updates a mission, such as assigning a cat or marking it as complete."
+      operationId: "updateMission"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMission'
+      responses:
+        '200':
+          description: "Mission updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  cat_id:
+                    type: integer
+                  complete:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Missions
+      summary: "Delete a mission"
+      description: "Deletes a mission. Fails if the mission is already assigned to a cat."
+      operationId: "deleteMission"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        '204':
+          description: "Mission deleted successfully."
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /missions/{missionId}/targets:
+    post:
+      tags:
+        - Targets
+      summary: "Add a target to a mission"
+      description: "Adds a new target to an existing mission. Fails if the mission is complete or already has 3 targets."
+      operationId: "addTargetToMission"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTarget'
+      responses:
+        '201':
+          description: "Target added successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /missions/{missionId}/targets/{targetId}:
+    patch:
+      tags:
+        - Targets
+      summary: "Update a target"
+      description: "Updates a target's notes or marks it as complete. Notes cannot be updated if the target or mission is complete."
+      operationId: "updateTarget"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+        - name: "targetId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTarget'
+      responses:
+        '200':
+          description: "Target updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  notes:
+                    type: string
+                  complete:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Targets
+      summary: "Delete a target from a mission"
+      description: "Deletes a target from a mission. Fails if the target is already complete."
+      operationId: "deleteTarget"
+      parameters:
+        - name: "missionId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+        - name: "targetId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        '204':
+          description: "Target deleted successfully."
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    # --- Main Models ---
+    Cat:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        name:
+          type: "string"
+        years_of_experience:
+          type: "integer"
+        breed:
+          type: "string"
+        salary:
+          type: "number"
+          format: "float"
+        created_at:
+          type: "string"
+          format: "date-time"
+    Mission:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        cat_id:
+          type: "integer"
+          nullable: true
+        complete:
+          type: "boolean"
+          default: false
+        created_at:
+          type: "string"
+          format: "date-time"
+        targets:
+          type: "array"
+          items:
+            $ref: '#/components/schemas/Target'
+    MissionSummary:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        cat_id:
+          type: "integer"
+          nullable: true
+        complete:
+          type: "boolean"
+    Target:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        mission_id:
+          type: "integer"
+        name:
+          type: "string"
+        country:
+          type: "string"
+        notes:
+          type: "string"
+        complete:
+          type: "boolean"
+          default: false
+
+    # --- Input Models ---
+    NewCat:
+      type: "object"
+      required: ["name", "years_of_experience", "breed", "salary"]
+      properties:
+        name:
+          type: "string"
+          example: "Whiskers"
+        years_of_experience:
+          type: "integer"
+          example: 5
+        breed:
+          type: "string"
+          example: "Siamese"
+        salary:
+          type: "number"
+          format: "float"
+          example: 75000.50
+    UpdateCatSalary:
+      type: "object"
+      required: ["salary"]
+      properties:
+        salary:
+          type: "number"
+          format: "float"
+          example: 80000.00
+    NewMission:
+      type: "object"
+      required: ["targets"]
+      properties:
+        targets:
+          type: "array"
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/NewTarget'
+    UpdateMission:
+      type: "object"
+      required: ["cat_id", "complete"]
+      properties:
+        cat_id:
+          type: "integer"
+        complete:
+          type: "boolean"
+    NewTarget:
+      type: "object"
+      required: ["name", "country"]
+      properties:
+        name:
+          type: "string"
+          example: "Infiltrate Evil Corp"
+        country:
+          type: "string"
+          example: "USA"
+    UpdateTarget:
+      type: "object"
+      properties:
+        notes:
+          type: "string"
+          example: "The message is a recipe for lasagna."
+        complete:
+          type: "boolean"
+
+    # --- Error Model ---
+    Error:
+      type: "object"
+      properties:
+        error:
+          type: "string"
+
+  responses:
+    BadRequest:
+      description: "Bad Request - The request body is invalid or missing required fields."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "The request body is invalid or missing required fields"
+    NotFound:
+      description: "Not Found - The requested resource does not exist."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "The requested resource does not exist."
+    Conflict:
+      description: "Conflict - The request could not be completed due to a conflict with the current state of the resource."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "All targets must be complete before a mission can be marked as complete."
+    InternalServerError:
+      description: "Internal Server Error - An unexpected error occurred on the server."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "An unexpected error occurred on the server"

@@ -23,8 +23,8 @@ type CreateMissionRequest struct {
 }
 
 type UpdateMissionRequest struct {
-	CatID    int  `json:"cat_id"`
-	Complete bool `json:"complete"`
+	CatID    int  `json:"cat_id" binding:"required"`
+	Complete bool `json:"complete" binding:"required"`
 }
 
 type UpdateTargetRequest struct {
@@ -157,7 +157,7 @@ func (h *Handler) DeleteMission(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 			return
 		case errors.Is(err, AssignedErr):
-			c.JSON(409, gin.H{"error": "The request could not be completed due to a conflict with the current state of the resource."})
+			c.JSON(409, gin.H{"error": "Missions assigned to a cat cannot be deleted."})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
@@ -192,7 +192,7 @@ func (h *Handler) AddTarget(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 			return
 		case errors.Is(err, ConflictErr):
-			c.JSON(409, gin.H{"error": "The request could not be completed due to a conflict with the current state of the resource."})
+			c.JSON(409, gin.H{"error": "Mission is already complete"})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
@@ -231,7 +231,7 @@ func (h *Handler) UpdateTarget(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 			return
 		case errors.Is(err, ConflictErr):
-			c.JSON(409, gin.H{"error": "The request could not be completed due to a conflict with the current state of the resource."})
+			c.JSON(409, gin.H{"error": "Target's mission is already complete"})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
@@ -263,7 +263,7 @@ func (h *Handler) DeleteTarget(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "The requested resource does not exist"})
 			return
 		case errors.Is(err, ConflictErr):
-			c.JSON(409, gin.H{"error": "The request could not be completed due to a conflict with the current state of the resource."})
+			c.JSON(409, gin.H{"error": "Target's mission is already complete"})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
