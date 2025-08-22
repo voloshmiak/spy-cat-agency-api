@@ -1,0 +1,421 @@
+{
+  "info": {
+    "_postman_id": "a8a2e7c2-7b6a-4b0d-9b3e-7c1d7e2e1a3b",
+    "name": "Spy Cat Agency API",
+    "description": "API for managing spy cats, their missions, and targets.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Cats",
+      "item": [
+        {
+          "name": "List all spy cats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cats"
+              ]
+            },
+            "description": "Retrieves a list of all spy cats in the system."
+          },
+          "response": []
+        },
+        {
+          "name": "Create a new spy cat",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Whiskers\",\n  \"years_of_experience\": 5,\n  \"breed\": \"Siamese\",\n  \"salary\": 75000.50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cats"
+              ]
+            },
+            "description": "Adds a new spy cat to the agency. The breed is validated against TheCatAPI."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a single spy cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cats/:catId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cats",
+                ":catId"
+              ],
+              "variable": [
+                {
+                  "key": "catId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Retrieves detailed information about a specific spy cat by its ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a cat's salary",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salary\": 80000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cats/:catId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cats",
+                ":catId"
+              ],
+              "variable": [
+                {
+                  "key": "catId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Updates the salary of an existing spy cat."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove a spy cat",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cats/:catId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cats",
+                ":catId"
+              ],
+              "variable": [
+                {
+                  "key": "catId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Deletes a spy cat from the system. Fails if the cat is on an active mission."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Missions",
+      "item": [
+        {
+          "name": "List all missions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions"
+              ]
+            },
+            "description": "Retrieves a summary list of all missions."
+          },
+          "response": []
+        },
+        {
+          "name": "Create a new mission",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targets\": [\n    {\n      \"name\": \"Infiltrate Evil Corp\",\n      \"country\": \"USA\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions"
+              ]
+            },
+            "description": "Creates a new mission with 1 to 3 initial targets."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a single mission",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Retrieves detailed information about a mission, including its targets."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a mission",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cat_id\": 1,\n  \"complete\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Updates a mission, such as assigning a cat or marking it as complete."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a mission",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Deletes a mission. Fails if the mission is already assigned to a cat."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Targets",
+      "item": [
+        {
+          "name": "Add a target to a mission",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Steal the Fish\",\n  \"country\": \"UK\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId/targets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId",
+                "targets"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Adds a new target to an existing mission. Fails if the mission is complete or already has 3 targets."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a target",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"The message is a recipe for lasagna.\",\n  \"complete\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId/targets/:targetId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId",
+                "targets",
+                ":targetId"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                },
+                {
+                  "key": "targetId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Updates a target's notes or marks it as complete. Notes cannot be updated if the target or mission is complete."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a target from a mission",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/missions/:missionId/targets/:targetId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "missions",
+                ":missionId",
+                "targets",
+                ":targetId"
+              ],
+              "variable": [
+                {
+                  "key": "missionId",
+                  "value": ""
+                },
+                {
+                  "key": "targetId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Deletes a target from a mission. Fails if the target is already complete."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    }
+  ]
+}

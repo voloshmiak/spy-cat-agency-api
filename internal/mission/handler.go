@@ -118,7 +118,7 @@ func (h *Handler) UpdateMission(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, cat.NotFoundErr):
-			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
+			c.JSON(400, gin.H{"error": "Provided cat_id does not exist"})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
