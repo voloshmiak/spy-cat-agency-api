@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
 	"log"
 	"time"
 )
@@ -20,6 +20,20 @@ func (w bodyLogWriter) Write(b []byte) (int, error) {
 
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var requestBodyBytes []byte
+		if c.Request.Body != nil {
+			requestBodyBytes, _ = io.ReadAll(c.Request.Body)
+		}
+
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBodyBytes))
+
+		log.Printf(
+			"Request: Method=%s, Path=%s, Body=%s",
+			c.Request.Method,
+			c.Request.URL.Path,
+			string(requestBodyBytes),
+		)
+
 		blw := &bodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
 		c.Writer = blw
 
@@ -27,9 +41,11 @@ func Logger() gin.HandlerFunc {
 
 		c.Next()
 
-		statusCode := c.Writer.Status()
-
-		log.Println(fmt.Sprintf("%s | %s | %d | %s | %s", c.Request.Method, time.Since(t),
-			statusCode, c.Request.URL.Path, blw.body.String()))
+		log.Printf(
+			"Response: StatusCode=%d, Latency=%v, Body=%s",
+			c.Writer.Status(),
+			time.Since(t),
+			blw.body.String(),
+		)
 	}
 }
