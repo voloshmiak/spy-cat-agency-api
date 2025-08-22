@@ -132,7 +132,7 @@ func (h *Handler) UpdateMission(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 			return
 		case errors.Is(err, ConflictErr):
-			c.JSON(409, gin.H{"error": "The request could not be completed due to a conflict with the current state of the resource."})
+			c.JSON(409, gin.H{"error": "All targets must be complete before a mission can be marked as complete."})
 			return
 		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
