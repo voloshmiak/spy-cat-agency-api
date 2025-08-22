@@ -1,0 +1,13 @@
+server:
+  port: "8080"
+  read_timeout: 5s
+  write_timeout: 10s
+  idle_timeout: 120s
+
+database:
+  host: "db"
+  port: 5432
+  user: "postgres"
+  password: "your_password_here"
+  dbname: "cat-db"
+  migrations_path: "./migrations"

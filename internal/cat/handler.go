@@ -2,6 +2,7 @@ package cat
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -35,7 +36,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) ListCats(c *gin.Context) {
 	cats, err := h.Service.ListCats()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
 		return
 	}
 	c.JSON(200, cats)
@@ -51,7 +52,7 @@ func (h *Handler) CreateCat(c *gin.Context) {
 
 	isValid, err := validateBreed(catRequest.Breed)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server."})
+		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
 		return
 	}
 
@@ -78,12 +79,12 @@ func (h *Handler) GetCat(c *gin.Context) {
 
 	cat, err := h.Service.GetCat(id)
 	if err != nil {
+		switch {
+		case errors.Is(err, NotFoundErr):
+			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
+			return
+		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server."})
-		return
-	}
-
-	if cat == nil {
-		c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 		return
 	}
 

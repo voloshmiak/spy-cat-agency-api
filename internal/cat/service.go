@@ -1,5 +1,11 @@
 package cat
 
+import "errors"
+
+var (
+	NotFoundErr = errors.New("not found")
+)
+
 type Service struct {
 	repo *Repository
 }
@@ -29,16 +35,20 @@ func (s *Service) CreateCat(name, breed string, yearsOfExperience int, salary fl
 }
 
 func (s *Service) GetCat(id int) (*Cat, error) {
-	return s.repo.GetCatByID(id)
+	cat, err := s.repo.GetCatByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if cat == nil {
+		return nil, NotFoundErr
+	}
+	return cat, nil
 }
 
 func (s *Service) UpdateCatSalary(id int, salary float64) error {
 	cat, err := s.repo.GetCatByID(id)
 	if err != nil {
 		return err
-	}
-	if cat == nil {
-		return nil
 	}
 
 	cat.Salary = salary

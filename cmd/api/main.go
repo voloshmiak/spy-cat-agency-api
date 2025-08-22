@@ -2,18 +2,17 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"spy-cat-agency/config"
 	"spy-cat-agency/internal/cat"
+	"spy-cat-agency/internal/db"
+	"spy-cat-agency/internal/middleware"
+	"spy-cat-agency/internal/mission"
 	"syscall"
 	"time"
 )
@@ -27,32 +26,64 @@ func main() {
 func run() error {
 	gin.SetMode(gin.ReleaseMode)
 
-	conn, err := Connect()
+	c, err := config.New()
 	if err != nil {
 		return err
 	}
 
-	router := gin.Default()
+	conn, err := db.Connect(c.Database.User, c.Database.Password,
+		c.Database.Host, c.Database.DBName, c.Database.Port)
+	if err != nil {
+		return err
+	}
+
+	err = db.Migrate(conn, "./migrations")
+	if err != nil {
+		return err
+	}
+
+	router := gin.New()
+
+	router.Use(middleware.Logger())
 
 	cr := cat.NewRepository(conn)
 	cs := cat.NewService(cr)
 	ch := cat.NewHandler(cs)
 
+	v1 := router.Group("/api/v1")
+
+	catRoutes := v1.Group("/cats")
 	{
-		v1 := router.Group("/api/v1")
-		{
-			// Cat routes
-			v1.GET("/cats", ch.ListCats)
-			v1.POST("/cats", ch.CreateCat)
-			v1.GET("/cats/:id", ch.GetCat)
-			v1.PATCH("/cats/:id", ch.UpdateCat)
-			v1.DELETE("/cats/:id", ch.DeleteCat)
-		}
+		catRoutes.GET("", ch.ListCats)         // api/v1/cats
+		catRoutes.POST("", ch.CreateCat)       // api/v1/cats
+		catRoutes.GET("/:id", ch.GetCat)       // api/v1/cats/:id
+		catRoutes.PATCH("/:id", ch.UpdateCat)  // api/v1/cats/:id
+		catRoutes.DELETE("/:id", ch.DeleteCat) // api/v1/cats/:id
+	}
+
+	mr := mission.NewRepository(conn)
+	ms := mission.NewService(mr)
+	mh := mission.NewHandler(ms, cs)
+
+	missionRoutes := v1.Group("/missions")
+	{
+		missionRoutes.GET("", mh.ListMissions)         // api/v1/missions
+		missionRoutes.POST("", mh.CreateMission)       // api/v1/missions
+		missionRoutes.GET("/:id", mh.GetMission)       // api/v1/missions/:id
+		missionRoutes.PATCH("/:id", mh.UpdateMission)  // api/v1/missions/:id
+		missionRoutes.DELETE("/:id", mh.DeleteMission) // api/v1/missions/:id
+
+		missionRoutes.POST("/:id/targets", mh.AddTarget)                 // api/v1/missions/:id/targets
+		missionRoutes.PATCH("/:id/targets/:target_id", mh.UpdateTarget)  // api/v1/missions/:id/targets/:target_id
+		missionRoutes.DELETE("/:id/targets/:target_id", mh.DeleteTarget) // api/v1/missions/:id/targets/:target_id
 	}
 
 	s := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
+		Addr:         ":" + c.Server.Port,
+		Handler:      router,
+		ReadTimeout:  c.Server.ReadTimeout,
+		WriteTimeout: c.Server.WriteTimeout,
+		IdleTimeout:  c.Server.IdleTimeout,
 	}
 
 	done := make(chan bool)
@@ -85,40 +116,4 @@ func run() error {
 	log.Println("Graceful shutdown complete")
 
 	return nil
-}
-
-func Connect() (*sql.DB, error) {
-	databaseURL := "postgres://postgres:12345@localhost:5432/cat-db?sslmode=disable"
-
-	conn, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	driver, err := postgres.WithInstance(conn, &postgres.Config{})
-	if err != nil {
-		return nil, err
-	}
-	m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return nil, err
-	} else if errors.Is(err, migrate.ErrNoChange) {
-		log.Println("No new migrations to apply.")
-	} else {
-		log.Println("Migrations applied successfully!")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	err = conn.PingContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
 }
