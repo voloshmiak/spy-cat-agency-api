@@ -8,8 +8,6 @@ import (
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
-	Logger   LoggerConfig   `mapstructure:"logger"`
-	Services ServicesConfig `mapstructure:"services"`
 }
 
 type ServerConfig struct {
@@ -26,22 +24,6 @@ type DatabaseConfig struct {
 	Password       string `mapstructure:"password"`
 	DBName         string `mapstructure:"dbname"`
 	MigrationsPath string `mapstructure:"migrations_path"`
-}
-
-// LoggerConfig holds the configuration for the application logger.
-type LoggerConfig struct {
-	Level  string `mapstructure:"level"`
-	Format string `mapstructure:"format"`
-}
-
-type ServicesConfig struct {
-	CatAPI CatAPIConfig `mapstructure:"cat_api"`
-}
-
-type CatAPIConfig struct {
-	BaseURL string        `mapstructure:"base_url"`
-	APIKey  string        `mapstructure:"api_key"`
-	Timeout time.Duration `mapstructure:"timeout"`
 }
 
 func New() (*Config, error) {
