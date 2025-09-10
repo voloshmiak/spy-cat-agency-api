@@ -2,12 +2,43 @@ package mission
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"spy-cat-agency/internal/cat"
 	"strconv"
 )
 
-type MissionsResponse struct {
+type MissionResponse struct {
+	ID       int  `json:"id"`
+	CatID    *int `json:"cat_id"`
+	Complete bool `json:"complete"`
+}
+
+type ListMissionsResponse struct {
+	Missions []MissionResponse `json:"missions"`
+}
+
+type CreateMissionRequest struct {
+	Targets []TargetRequest `json:"targets" binding:"required,min=1,max=3"`
+}
+
+type CreateMissionResponse struct {
+	ID int `json:"id"`
+}
+
+type GetMissionResponse struct {
+	ID       int      `json:"id"`
+	CatID    *int     `json:"cat_id"`
+	Complete bool     `json:"complete"`
+	Targets  []Target `json:"targets"`
+}
+
+type UpdateMissionRequest struct {
+	CatID    *int  `json:"cat_id"`
+	Complete *bool `json:"complete"`
+}
+
+type UpdateMissionResponse struct {
 	ID       int  `json:"id"`
 	CatID    *int `json:"cat_id"`
 	Complete bool `json:"complete"`
@@ -18,27 +49,27 @@ type TargetRequest struct {
 	Country string `json:"country" binding:"required"`
 }
 
-type CreateMissionRequest struct {
-	Targets []TargetRequest `json:"targets" binding:"required,min=1,max=3"`
-}
-
-type UpdateMissionRequest struct {
-	CatID    int  `json:"cat_id" binding:"required"`
-	Complete bool `json:"complete" binding:"required"`
+type AddTargetResponse struct {
+	ID int `json:"id"`
 }
 
 type UpdateTargetRequest struct {
+	Notes    string `json:"notes" binding:"required"`
+	Complete bool   `json:"complete" binding:"required"`
+}
+
+type UpdateTargetResponse struct {
+	ID       int    `json:"id"`
 	Notes    string `json:"notes"`
 	Complete bool   `json:"complete"`
 }
 
 type Handler struct {
 	MissionService *Service
-	CatService     *cat.Service
 }
 
-func NewHandler(missionService *Service, catService *cat.Service) *Handler {
-	return &Handler{MissionService: missionService, CatService: catService}
+func NewHandler(missionService *Service) *Handler {
+	return &Handler{MissionService: missionService}
 }
 
 func (h *Handler) ListMissions(c *gin.Context) {
@@ -48,16 +79,19 @@ func (h *Handler) ListMissions(c *gin.Context) {
 		return
 	}
 
-	missionsResponse := make([]MissionsResponse, 0)
+	response := ListMissionsResponse{}
+	var missionsResp []MissionResponse
 	for _, m := range missions {
-		missionsResponse = append(missionsResponse, MissionsResponse{
+		missionsResp = append(missionsResp, MissionResponse{
 			ID:       m.ID,
 			CatID:    m.CatID,
 			Complete: m.Complete,
 		})
 	}
 
-	c.JSON(200, missionsResponse)
+	response.Missions = missionsResp
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) CreateMission(c *gin.Context) {
@@ -74,7 +108,11 @@ func (h *Handler) CreateMission(c *gin.Context) {
 		return
 	}
 
-	c.JSON(201, gin.H{"id": id})
+	response := CreateMissionResponse{
+		ID: id,
+	}
+
+	c.JSON(201, response)
 }
 
 func (h *Handler) GetMission(c *gin.Context) {
@@ -96,7 +134,14 @@ func (h *Handler) GetMission(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, mission)
+	response := GetMissionResponse{
+		ID:       mission.ID,
+		CatID:    mission.CatID,
+		Complete: mission.Complete,
+		Targets:  mission.Targets,
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) UpdateMission(c *gin.Context) {
@@ -114,20 +159,17 @@ func (h *Handler) UpdateMission(c *gin.Context) {
 		return
 	}
 
-	_, err = h.CatService.GetCat(missionRequest.CatID)
+	ctx := c.Request.Context()
+
+	updatedMission, err := h.MissionService.UpdateMission(ctx, id, missionRequest)
 	if err != nil {
 		switch {
+		case errors.Is(err, CatBusyErr):
+			c.JSON(400, gin.H{"error": "The cat is already assigned to another active mission"})
+			return
 		case errors.Is(err, cat.NotFoundErr):
 			c.JSON(400, gin.H{"error": "Provided cat_id does not exist"})
 			return
-		}
-		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
-		return
-	}
-
-	err = h.MissionService.UpdateMission(id, missionRequest.CatID, missionRequest.Complete)
-	if err != nil {
-		switch {
 		case errors.Is(err, NotFoundErr):
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
 			return
@@ -135,11 +177,18 @@ func (h *Handler) UpdateMission(c *gin.Context) {
 			c.JSON(409, gin.H{"error": "All targets must be complete before a mission can be marked as complete."})
 			return
 		}
+		fmt.Println(err)
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
 		return
 	}
 
-	c.JSON(200, gin.H{"id": id, "cat_id": missionRequest.CatID, "complete": missionRequest.Complete})
+	response := UpdateMissionResponse{
+		ID:       updatedMission.ID,
+		CatID:    updatedMission.CatID,
+		Complete: updatedMission.Complete,
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) DeleteMission(c *gin.Context) {
@@ -150,8 +199,11 @@ func (h *Handler) DeleteMission(c *gin.Context) {
 		return
 	}
 
-	err = h.MissionService.DeleteMission(id)
+	ctx := c.Request.Context()
+
+	err = h.MissionService.DeleteMission(ctx, id)
 	if err != nil {
+		fmt.Println(err)
 		switch {
 		case errors.Is(err, NotFoundErr):
 			c.JSON(404, gin.H{"error": "The requested resource does not exist."})
@@ -199,7 +251,11 @@ func (h *Handler) AddTarget(c *gin.Context) {
 		return
 	}
 
-	c.JSON(201, gin.H{"id": targetID})
+	response := AddTargetResponse{
+		ID: targetID,
+	}
+
+	c.JSON(201, response)
 }
 
 func (h *Handler) UpdateTarget(c *gin.Context) {
@@ -224,7 +280,9 @@ func (h *Handler) UpdateTarget(c *gin.Context) {
 		return
 	}
 
-	err = h.MissionService.UpdateTarget(missionID, targetID, targetRequest.Notes, targetRequest.Complete)
+	ctx := c.Request.Context()
+
+	err = h.MissionService.UpdateTarget(ctx, missionID, targetID, targetRequest.Notes, targetRequest.Complete)
 	if err != nil {
 		switch {
 		case errors.Is(err, NotFoundErr):
@@ -238,7 +296,13 @@ func (h *Handler) UpdateTarget(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"id": targetID, "notes": targetRequest.Notes, "complete": targetRequest.Complete})
+	response := UpdateTargetResponse{
+		ID:       targetID,
+		Notes:    targetRequest.Notes,
+		Complete: targetRequest.Complete,
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) DeleteTarget(c *gin.Context) {
@@ -256,7 +320,9 @@ func (h *Handler) DeleteTarget(c *gin.Context) {
 		return
 	}
 
-	err = h.MissionService.DeleteTarget(missionID, targetID)
+	ctx := c.Request.Context()
+
+	err = h.MissionService.DeleteTarget(ctx, missionID, targetID)
 	if err != nil {
 		switch {
 		case errors.Is(err, NotFoundErr):

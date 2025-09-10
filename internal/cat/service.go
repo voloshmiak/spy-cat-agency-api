@@ -1,10 +1,24 @@
 package cat
 
-import "errors"
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+)
 
 var (
-	NotFoundErr = errors.New("not found")
+	NotFoundErr   = errors.New("not found")
+	WrongBreedErr = errors.New("the specified breed is not recognized")
 )
+
+type Breed struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
 type Service struct {
 	repo *Repository
@@ -24,6 +38,15 @@ func (s *Service) ListCats() ([]Cat, error) {
 }
 
 func (s *Service) CreateCat(name, breed string, yearsOfExperience int, salary float64) (int, error) {
+	isValid, err := validateBreed(breed)
+	if err != nil {
+		return 0, WrongBreedErr
+	}
+
+	if !isValid {
+		return 0, WrongBreedErr
+	}
+
 	cat := &Cat{
 		Name:              name,
 		Breed:             breed,
@@ -45,7 +68,7 @@ func (s *Service) GetCat(id int) (*Cat, error) {
 	return cat, nil
 }
 
-func (s *Service) UpdateCatSalary(id int, salary float64) error {
+func (s *Service) UpdateCatSalary(ctx context.Context, id int, salary float64) error {
 	cat, err := s.repo.GetCatByID(id)
 	if err != nil {
 		return err
@@ -53,9 +76,45 @@ func (s *Service) UpdateCatSalary(id int, salary float64) error {
 
 	cat.Salary = salary
 
-	return s.repo.UpdateCat(cat)
+	return s.repo.UpdateCat(ctx, cat)
 }
 
-func (s *Service) DeleteCat(id int) error {
-	return s.repo.DeleteCat(id)
+func (s *Service) DeleteCat(ctx context.Context, id int) error {
+	err := s.repo.DeleteCat(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return NotFoundErr
+		}
+		return err
+	}
+
+	return nil
+}
+
+func validateBreed(breed string) (bool, error) {
+	resp, err := http.Get("https://api.thecatapi.com/v1/breeds")
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var breeds []Breed
+	err = json.Unmarshal(body, &breeds)
+	if err != nil {
+		return false, err
+	}
+
+	for _, b := range breeds {
+		if strings.EqualFold(b.Name, breed) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

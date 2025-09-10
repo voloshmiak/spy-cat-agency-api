@@ -1,6 +1,7 @@
 package cat
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -63,16 +64,29 @@ func (r *Repository) GetCatByID(id int) (*Cat, error) {
 	return &cat, nil
 }
 
-func (r *Repository) UpdateCat(cat *Cat) error {
+func (r *Repository) UpdateCat(ctx context.Context, cat *Cat) error {
 	query := `UPDATE cats SET name = $1, years_of_experience = $2, breed = $3, salary = $4 WHERE id = $5`
 
-	_, err := r.conn.Exec(query, cat.Name, cat.YearsOfExperience, cat.Breed, cat.Salary, cat.ID)
+	_, err := r.conn.ExecContext(ctx, query, cat.Name, cat.YearsOfExperience, cat.Breed, cat.Salary, cat.ID)
 	return err
 }
 
-func (r *Repository) DeleteCat(id int) error {
+func (r *Repository) DeleteCat(ctx context.Context, id int) error {
 	query := `DELETE FROM cats WHERE id = $1`
 
-	_, err := r.conn.Exec(query, id)
-	return err
+	res, err := r.conn.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }

@@ -62,8 +62,8 @@ func run() error {
 	}
 
 	mr := mission.NewRepository(conn)
-	ms := mission.NewService(mr)
-	mh := mission.NewHandler(ms, cs)
+	ms := mission.NewService(mr, cs)
+	mh := mission.NewHandler(ms)
 
 	missionRoutes := v1.Group("/missions")
 	{

@@ -1,14 +1,22 @@
 package cat
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"io"
-	"net/http"
 	"strconv"
-	"strings"
 )
+
+type ListCatsResponse struct {
+	Cats []CatResponse `json:"cats"`
+}
+
+type CatResponse struct {
+	ID                int     `json:"id"`
+	Name              string  `json:"name"`
+	YearsOfExperience int     `json:"years_of_experience"`
+	Breed             string  `json:"breed"`
+	Salary            float64 `json:"salary"`
+}
 
 type CreateCatRequest struct {
 	Name              string  `json:"name" binding:"required"`
@@ -16,13 +24,18 @@ type CreateCatRequest struct {
 	YearsOfExperience int     `json:"years_of_experience" binding:"required"`
 	Salary            float64 `json:"salary" binding:"required"`
 }
-type Breed struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+
+type CreateCatResponse struct {
+	ID int `json:"id"`
 }
 
 type UpdateCatSalaryRequest struct {
 	Salary float64 `json:"salary" binding:"required"`
+}
+
+type UpdateCatSalaryResponse struct {
+	ID        int     `json:"id"`
+	NewSalary float64 `json:"new_salary"`
 }
 
 type Handler struct {
@@ -39,7 +52,23 @@ func (h *Handler) ListCats(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
 		return
 	}
-	c.JSON(200, cats)
+
+	response := ListCatsResponse{}
+	var catsResponse []CatResponse
+	for _, cat := range cats {
+		catResponse := CatResponse{
+			ID:                cat.ID,
+			Name:              cat.Name,
+			YearsOfExperience: cat.YearsOfExperience,
+			Breed:             cat.Breed,
+			Salary:            cat.Salary,
+		}
+		catsResponse = append(catsResponse, catResponse)
+	}
+
+	response.Cats = catsResponse
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) CreateCat(c *gin.Context) {
@@ -50,23 +79,22 @@ func (h *Handler) CreateCat(c *gin.Context) {
 		return
 	}
 
-	isValid, err := validateBreed(catRequest.Breed)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server"})
-		return
-	}
-
-	if !isValid {
-		c.JSON(400, gin.H{"error": "The specified breed is not recognized."})
-		return
-	}
-
 	id, err := h.Service.CreateCat(catRequest.Name, catRequest.Breed, catRequest.YearsOfExperience, catRequest.Salary)
 	if err != nil {
+		switch {
+		case errors.Is(err, WrongBreedErr):
+			c.JSON(400, gin.H{"error": "The specified breed is not recognized."})
+			return
+		}
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server."})
 		return
 	}
-	c.JSON(201, gin.H{"id": id})
+
+	response := CreateCatResponse{
+		ID: id,
+	}
+
+	c.JSON(201, response)
 }
 
 func (h *Handler) GetCat(c *gin.Context) {
@@ -88,7 +116,15 @@ func (h *Handler) GetCat(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, cat)
+	response := CatResponse{
+		ID:                cat.ID,
+		Name:              cat.Name,
+		YearsOfExperience: cat.YearsOfExperience,
+		Breed:             cat.Breed,
+		Salary:            cat.Salary,
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) UpdateCat(c *gin.Context) {
@@ -106,13 +142,20 @@ func (h *Handler) UpdateCat(c *gin.Context) {
 		return
 	}
 
-	err = h.Service.UpdateCatSalary(id, catRequest.Salary)
+	ctx := c.Request.Context()
+
+	err = h.Service.UpdateCatSalary(ctx, id, catRequest.Salary)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server."})
 		return
 	}
 
-	c.JSON(200, gin.H{"id": id, "new_salary": catRequest.Salary})
+	response := UpdateCatSalaryResponse{
+		ID:        id,
+		NewSalary: catRequest.Salary,
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *Handler) DeleteCat(c *gin.Context) {
@@ -123,38 +166,13 @@ func (h *Handler) DeleteCat(c *gin.Context) {
 		return
 	}
 
-	err = h.Service.DeleteCat(id)
+	ctx := c.Request.Context()
+
+	err = h.Service.DeleteCat(ctx, id)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "An unexpected error occurred on the server."})
 		return
 	}
 
 	c.Status(204)
-}
-
-func validateBreed(breedName string) (bool, error) {
-	resp, err := http.Get("https://api.thecatapi.com/v1/breeds")
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	var breeds []Breed
-	err = json.Unmarshal(body, &breeds)
-	if err != nil {
-		return false, err
-	}
-
-	for _, b := range breeds {
-		if strings.EqualFold(b.Name, breedName) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

@@ -21,9 +21,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Cat'
+                type: object
+                properties:
+                  cats:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cat'
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
@@ -147,9 +150,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/MissionSummary'
+                type: object
+                properties:
+                  missions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MissionSummary'
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
@@ -479,12 +485,12 @@ components:
             $ref: '#/components/schemas/NewTarget'
     UpdateMission:
       type: "object"
-      required: ["cat_id", "complete"]
       properties:
         cat_id:
           type: "integer"
         complete:
           type: "boolean"
+      minProperties: 1
     NewTarget:
       type: "object"
       required: ["name", "country"]

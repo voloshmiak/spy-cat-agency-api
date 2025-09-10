@@ -9,7 +9,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -20,6 +21,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: your_password_here
       POSTGRES_DB: cat-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:

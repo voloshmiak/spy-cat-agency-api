@@ -1,20 +1,30 @@
 package mission
 
-import "errors"
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"spy-cat-agency/internal/cat"
+)
 
 var (
 	MaxTargetsErr = errors.New("maximum targets exceeded")
 	NotFoundErr   = errors.New("not found")
 	ConflictErr   = errors.New("conflict with current state")
 	AssignedErr   = errors.New("cannot delete an assigned mission")
+	CatBusyErr    = errors.New("cat is already assigned to an active mission")
 )
 
 type Service struct {
-	repo *Repository
+	repo       *Repository
+	catService *cat.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, catService *cat.Service) *Service {
+	return &Service{
+		repo:       repo,
+		catService: catService,
+	}
 }
 
 func (s *Service) ListMissions() ([]Mission, error) {
@@ -48,36 +58,65 @@ func (s *Service) CreateMission(targetsRequest []TargetRequest) (int, error) {
 func (s *Service) GetMission(id int) (*Mission, error) {
 	mission, err := s.repo.GetMissionByID(id)
 	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, NotFoundErr
+		}
 		return nil, err
-	}
-	if mission == nil {
-		return nil, NotFoundErr
 	}
 
 	return mission, nil
 }
 
-func (s *Service) UpdateMission(id int, catID int, complete bool) error {
-	mission, err := s.GetMission(id)
-	if err != nil {
-		return err
+func (s *Service) UpdateMission(ctx context.Context, id int, r UpdateMissionRequest) (*Mission, error) {
+	if r.CatID == nil && r.Complete == nil {
+		return nil, nil
 	}
 
-	if complete {
+	if r.CatID != nil {
+		_, err := s.catService.GetCat(*r.CatID)
+		if err != nil {
+			return nil, err
+		}
+
+		activeMission, err := s.repo.FindActiveMissionByCatID(ctx, *r.CatID)
+		if err != nil {
+			return nil, err
+		}
+
+		if activeMission != nil && activeMission.ID != id {
+			return nil, CatBusyErr
+		}
+	}
+
+	if r.Complete != nil && *r.Complete {
+		mission, err := s.GetMission(id)
+		if err != nil {
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+				return nil, NotFoundErr
+			}
+			return nil, err
+		}
 		for _, t := range mission.Targets {
 			if !t.Complete {
-				return ConflictErr
+				return nil, ConflictErr
 			}
 		}
 	}
 
-	mission.CatID = &catID
-	mission.Complete = complete
+	mission, err := s.repo.UpdateMission(ctx, id, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, NotFoundErr
+		}
+		return nil, err
+	}
 
-	return s.repo.UpdateMission(mission)
+	return mission, nil
 }
 
-func (s *Service) DeleteMission(id int) error {
+func (s *Service) DeleteMission(ctx context.Context, id int) error {
 	mission, err := s.GetMission(id)
 	if err != nil {
 		return err
@@ -87,16 +126,26 @@ func (s *Service) DeleteMission(id int) error {
 		return AssignedErr
 	}
 
-	return s.repo.DeleteMission(id)
+	err = s.repo.DeleteMission(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return NotFoundErr
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) GetTarget(missionID, targetID int) (*Target, error) {
 	mission, err := s.repo.GetMissionByID(missionID)
 	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, NotFoundErr
+		}
 		return nil, err
-	}
-	if mission == nil {
-		return nil, NotFoundErr
 	}
 
 	for i := range mission.Targets {
@@ -131,7 +180,7 @@ func (s *Service) AddTarget(missionID int, name, country string) (int, error) {
 	return s.repo.AddTarget(target)
 }
 
-func (s *Service) UpdateTarget(missionID, targetID int, notes string, complete bool) error {
+func (s *Service) UpdateTarget(ctx context.Context, missionID, targetID int, notes string, complete bool) error {
 	mission, err := s.GetMission(missionID)
 	if err != nil {
 		return err
@@ -153,10 +202,10 @@ func (s *Service) UpdateTarget(missionID, targetID int, notes string, complete b
 	target.Notes = notes
 	target.Complete = complete
 
-	return s.repo.UpdateTarget(target)
+	return s.repo.UpdateTarget(ctx, target)
 }
 
-func (s *Service) DeleteTarget(missionID, targetID int) error {
+func (s *Service) DeleteTarget(ctx context.Context, missionID, targetID int) error {
 	target, err := s.GetTarget(missionID, targetID)
 	if err != nil {
 		return err
@@ -166,5 +215,14 @@ func (s *Service) DeleteTarget(missionID, targetID int) error {
 		return ConflictErr
 	}
 
-	return s.repo.DeleteTarget(targetID)
+	err = s.repo.DeleteTarget(ctx, targetID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return NotFoundErr
+		}
+		return err
+	}
+
+	return nil
 }
